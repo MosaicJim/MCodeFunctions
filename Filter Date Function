@@ -1,0 +1,38 @@
+Filter Date Function
+
+// Function to filter a table based on a date column
+// If the date is before 3 months ago, keep only end of the month records
+// If the date is more than 2 months in the future, keep only end of the month records
+let
+    FilterDateFunction = (inputTable as table, dateColumnName as text) as table =>
+    let
+        // Define today's date
+        Today = Date.From(DateTime.FixedLocalNow()),
+        // Calculate the date three months ago
+        ThreeMonthsAgo = Date.AddMonths(Today, -3),
+        // Calculate the date two months in the future
+        TwoMonthsFuture = Date.AddMonths(Today, 2),
+        // Add a column to check if the date is before 3 months ago or more than 2 months in the future
+        AddIsOldOrFutureColumn = Table.AddColumn(inputTable, "_IsOldOrFuture", each Record.Field(_, dateColumnName) < ThreeMonthsAgo or Record.Field(_, dateColumnName) > TwoMonthsFuture, type logical),
+        // Add a column to get the end of the month for the date column
+        AddEndOfMonthColumn = Table.AddColumn(AddIsOldOrFutureColumn, "_EndOfMonth", each Date.EndOfMonth(Record.Field(_, dateColumnName)), type date),
+        // Filter the table
+        FilteredTable = Table.SelectRows(AddEndOfMonthColumn, each ([_IsOldOrFuture] = false) or ([_IsOldOrFuture] = true and Record.Field(_, dateColumnName) = [_EndOfMonth])),
+        // Remove the temporary columns
+        RemoveColumns = Table.RemoveColumns(FilteredTable, {"_IsOldOrFuture", "_EndOfMonth"})
+    in
+        RemoveColumns
+in
+    FilterDateFunction
+
+
+FILTER DATE CODE
+let
+    // Load your table
+    Source = YourDataSourceHere,
+    // Apply the filter function to your table
+    FilteredTable = FilterDateFunction(Source, "YourDateColumnName")
+in
+    FilteredTable
+
+
