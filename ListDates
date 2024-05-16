@@ -1,0 +1,100 @@
+//STANDARD
+
+let
+    // Function to generate a list of dates with specific overrides
+    GenerateDateList = (inputTable as table, FromDateColumnName as text, MinFromDate as date, ToDateColumnName as text, MaxToDate as date) as table =>
+    let
+        // Add columns to check and apply the MinFromDate override
+        AdjustedFromDate = Table.AddColumn(inputTable, "AdjustedFromDate", each if Record.Field(_, FromDateColumnName) < MinFromDate then MinFromDate else Record.Field(_, FromDateColumnName), type date),
+        // Add columns to check and apply the MaxToDate override
+        AdjustedToDate = Table.AddColumn(AdjustedFromDate, "AdjustedToDate", each if Record.Field(_, ToDateColumnName) > MaxToDate then MaxToDate else Record.Field(_, ToDateColumnName), type date),
+        // Generate the list of dates
+        AddDateList = Table.AddColumn(AdjustedToDate, "Date", each List.Dates([AdjustedFromDate], Duration.Days([AdjustedToDate] - [AdjustedFromDate]) + 1, #duration(1,0,0,0))),
+        // Expand the list of dates to rows
+        ExpandDateList = Table.ExpandListColumn(AddDateList, "Date"),
+        // Change the type of the Date column to Date
+        SetDateType = Table.TransformColumnTypes(ExpandDateList, {{"Date", type date}}),
+        // Remove the temporary columns
+        RemoveColumns = Table.RemoveColumns(SetDateType, {"AdjustedFromDate", "AdjustedToDate"})
+    in
+        RemoveColumns
+in
+    GenerateDateList
+
+//STANDARD COLUMN INPUT
+
+let
+    // Load your table
+    Source = YourDataSourceHere,
+    // Define the minimum From Date and maximum To Date
+    MinFromDate = #date(2023, 1, 1),
+    MaxToDate = #date(2024, 12, 31),
+    // Apply the function to your table
+    DateListTable = GenerateDateList(Source, "YourFromDateColumnName", MinFromDate, "YourToDateColumnName", MaxToDate)
+in
+    DateListTable
+
+// To Date is end of month 2 months in the future
+
+let
+    // Function to generate a list of dates with specific overrides
+    GenerateDateList = (inputTable as table, FromDateColumnName as text, MinFromDate as date, ToDateColumnName as text, Today as date) as table =>
+    let
+        // Calculate MaxToDate based on Today
+        MaxToDate = Date.EndOfMonth(Date.AddMonths(Today, 2)),
+        // Add columns to check and apply the MinFromDate override
+        AdjustedFromDate = Table.AddColumn(inputTable, "AdjustedFromDate", each if Record.Field(_, FromDateColumnName) < MinFromDate then MinFromDate else Record.Field(_, FromDateColumnName), type date),
+        // Add columns to check and apply the MaxToDate override
+        AdjustedToDate = Table.AddColumn(AdjustedFromDate, "AdjustedToDate", each if Record.Field(_, ToDateColumnName) > MaxToDate then MaxToDate else Record.Field(_, ToDateColumnName), type date),
+        // Generate the list of dates
+        AddDateList = Table.AddColumn(AdjustedToDate, "Date", each List.Dates([AdjustedFromDate], Duration.Days([AdjustedToDate] - [AdjustedFromDate]) + 1, #duration(1,0,0,0))),
+        // Expand the list of dates to rows
+        ExpandDateList = Table.ExpandListColumn(AddDateList, "Date"),
+        // Change the type of the Date column to Date
+        SetDateType = Table.TransformColumnTypes(ExpandDateList, {{"Date", type date}}),
+        // Remove the temporary columns
+        RemoveColumns = Table.RemoveColumns(SetDateType, {"AdjustedFromDate", "AdjustedToDate"})
+    in
+        RemoveColumns
+in
+    GenerateDateList
+
+// 2MonthsMaxEnd
+
+let
+    GenerateDateListMaxEnd2M = (_FromDate as date, _ToDate as date, _MinFromDate as date) as table =>
+    let
+        // Calculate the future date which is the end of the month, two months from the current date
+        FutureDate = Date.EndOfMonth(Date.AddMonths(Date.From(DateTime.FixedLocalNow()), 2)),
+
+        // Determine the adjusted end date based on _ToDate and FutureDate
+        AdjustedToDate = if _ToDate < FutureDate then _ToDate else FutureDate,
+
+        // Calculate the adjusted start date based on the provided minimum date
+        AdjustedFromDate = if _MinFromDate > _FromDate then _MinFromDate else _FromDate,
+
+        // Generate a list of dates from AdjustedFromDate to AdjustedToDate
+        DateList = List.Dates(
+            AdjustedFromDate, 
+            Duration.Days(AdjustedToDate - AdjustedFromDate) + 1, 
+            #duration(1, 0, 0, 0)
+        ),
+
+        // Convert the list into a table and set the data type directly
+        DateTable = Table.FromList(
+            DateList, 
+            Splitter.SplitByNothing(), 
+            {"Date"}
+        ),
+
+        // Change the data type of the "Date" column to date
+        TypedDateTable = Table.TransformColumnTypes(
+            DateTable, 
+            {"Date", type date}
+        )
+    in
+        TypedDateTable
+in
+    GenerateDateListMaxEnd2M
+
+
